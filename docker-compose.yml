@@ -1,5 +1,16 @@
 services:
-  postgres-db:
+  app_server:
+    build:
+      context: .
+    ports:
+      - 8000:8000
+    container_name: app_server
+    depends_on:
+      - postgres_db
+    volumes:
+      - ./logs:/app/logs
+    
+  postgres_db:
     image: postgres:latest
     container_name: postgres_db
     environment:
@@ -7,7 +18,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: splitwise_db
     ports:
-      - "6432:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
  

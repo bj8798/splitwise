@@ -20,12 +20,37 @@ class GroupUpdateRequest(Group):
 class GroupResponse(Group):
     id: int
     
-class GroupCreateResponse(BaseModel):
-    id: int
-    
 class GroupsResponse(BaseModel):
     data: list[GroupResponse]
     count: int
     
+
+class ExpenseDetail(BaseModel):
+    user_id: int
+    amount: int
+    
+class ExpenseBreakDownDetails(BaseModel):
+    payer_id: int
+    receiver_id: int
+    amount: int
+
+class Expense(BaseModel):
+    description: str
+    date: datetime
+    group_id: int
+    expense_details: list[ExpenseDetail]
+    
+class ExpenseCreateRequest(Expense):
+    pass
+
+class ExpenseUpdateRequest(Expense):
+    pass
+    
+class ExpenseResponse(Expense):
+    id: int
+    
 class ResponseMessage(BaseModel):
     message: str
+    
+class EntityCreatedResponse(BaseModel):
+    id: int

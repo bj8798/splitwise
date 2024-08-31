@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
-from src.db.db_ops import SessionDep
-from src.models.api_models import GroupCreateReuqest, GroupCreateResponse, \
+from src.utils.db_ops import SessionDep
+from src.models.api_models import GroupCreateReuqest, EntityCreatedResponse, \
                         GroupResponse, GroupsResponse, ResponseMessage, \
                         GroupUpdateRequest
 from src.models.schema_models import Group, User
@@ -11,11 +11,11 @@ from src.utils.auth_helper import UserID
 router = APIRouter()
 
 @router.post("/")
-def create_group(request: GroupCreateReuqest, session: SessionDep, user_id: UserID) -> GroupCreateResponse:
+def create_group(request: GroupCreateReuqest, session: SessionDep, user_id: UserID) -> EntityCreatedResponse:
     group = Group(name = request.name, description = request.description, creator_id = user_id)
     session.add(group)
     session.commit()
-    return GroupCreateResponse(id = group.id)
+    return EntityCreatedResponse(id = group.id)
 
 
 @router.delete("/{group_id}")
