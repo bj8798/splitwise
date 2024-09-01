@@ -5,7 +5,7 @@ start your application by running:
 
 * application will be available at http://localhost:8080
 
-####Note
+#### Note
 * Docker compose will also run postgres DB on port 5432
 * Application will startup with total 5 inital users and other necessary tables. No need to run any scripts for it.
 
