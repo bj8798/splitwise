@@ -1,14 +1,13 @@
-from collections import defaultdict
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import select
 
-from src.api.routes.expenses import get_transaction_tuples
-from src.utils.db_ops import SessionDep
 from src.models.api_models import GroupCreateReuqest, EntityCreatedResponse, \
                         GroupResponse, GroupsResponse, ResponseMessage, \
                         GroupUpdateRequest, ExpenseSummaryGroupEntry
-from src.models.schema_models import Group, User, Expense, ExpenseBreakDown
+from src.models.schema_models import Group, User, Expense
 from src.utils.auth_helper import UserID
+from src.utils.db_ops import SessionDep
+from src.utils.expense_calculation_helper import get_simplified_map_from_db_expense_list, get_transaction_tuples
 
 router = APIRouter()
 
@@ -56,14 +55,6 @@ def get_group(session: SessionDep, group_id: int, user_id: UserID) -> GroupRespo
     
     return GroupResponse(id = group.id, name = group.name, description= group.description)
 
-def get_simplified_map(expense_breakdown_list: list[ExpenseBreakDown]):
-    
-    simplified_map = defaultdict(int)
-    for expense_breakdown in expense_breakdown_list:
-        simplified_map[expense_breakdown.payer_id] += expense_breakdown.amount
-        simplified_map[expense_breakdown.receiver_id] -= expense_breakdown.amount
-        
-    return simplified_map
 
 
 @router.get("/{group_id}/expenses/summary")
@@ -77,7 +68,7 @@ def get_group_expense_summary(session: SessionDep, group_id: int, user_id: UserI
             if expense_breakdown.is_settled == False:
                 expense_breakdown_list.append(expense_breakdown)
                 
-    simplified_map = get_simplified_map(expense_breakdown_list)
+    simplified_map = get_simplified_map_from_db_expense_list(expense_breakdown_list)
     print(simplified_map)
     transaction_tuples = get_transaction_tuples(simplified_map)
     

@@ -1,60 +1,25 @@
+from collections import defaultdict
 from datetime import datetime
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import select, or_
 
-from src.models.api_models import ExpenseCreateRequest, ExpenseDetail, \
+from src.models.api_models import ExpenseCreateRequest, \
         EntityCreatedResponse, ResponseMessage, ExpenseResponse, ExpenseBreakDownDetails, \
         ExpenseSummaryUser, PendingAmount, ExpenseDetailsUser
-from src.models.schema_models import Expense, ExpenseBreakDown, User
-
-from collections import defaultdict
+from src.models.schema_models import Expense, ExpenseBreakDown
 
 from src.utils.auth_helper import UserID
 from src.utils.db_ops import SessionDep
+from src.utils.expense_calculation_helper import get_simplified_map_from_api_expense_list, get_transaction_tuples
 
 
 router = APIRouter()
-
-def get_simplified_map(expense_breakdown_list: list[ExpenseDetail]):
-    
-    simplified_map = defaultdict(int)
-    
-    for expense_breakdown in expense_breakdown_list:
-        simplified_map[expense_breakdown.user_id] += expense_breakdown.amount
-    
-    return simplified_map
-
-def get_transaction_tuples(simplified_map: dict):
-    
-    transaction_tuples = []
-    for key1, val1 in simplified_map.items():
-        total_positive_money = val1
-        
-        if total_positive_money > 0:
-            for key2, val2 in simplified_map.items():
-                if key1 == key2:
-                    continue
-                if val2 >= 0:
-                    continue
-                
-                if (total_positive_money <= -1*val2) :
-                    transaction = (key1, key2, total_positive_money)
-                    simplified_map[key2] = total_positive_money + val2
-                    transaction_tuples.append(transaction)
-                    break
-                else:
-                    transaction = (key1, key2, -1*val2)
-                    simplified_map[key2] = 0
-                    total_positive_money += val2
-                    transaction_tuples.append(transaction)
-    
-    return transaction_tuples
 
 
 @router.post("/")
 def create_expense(request: ExpenseCreateRequest, session: SessionDep, user_id: UserID) -> EntityCreatedResponse:
     
-    simplified_map = get_simplified_map(request.expense_details)
+    simplified_map = get_simplified_map_from_api_expense_list(request.expense_details)
     transaction_tuples = get_transaction_tuples(simplified_map)
     expense_breakdowns = [ ExpenseBreakDown(payer_id=payer, receiver_id=reciever, amount=amount)  for payer, reciever, amount in transaction_tuples ]
     
