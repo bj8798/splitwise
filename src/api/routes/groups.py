@@ -1,11 +1,13 @@
+from collections import defaultdict
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
+from src.api.routes.expenses import get_transaction_tuples
 from src.utils.db_ops import SessionDep
 from src.models.api_models import GroupCreateReuqest, EntityCreatedResponse, \
                         GroupResponse, GroupsResponse, ResponseMessage, \
-                        GroupUpdateRequest
-from src.models.schema_models import Group, User
+                        GroupUpdateRequest, ExpenseSummaryGroupEntry
+from src.models.schema_models import Group, User, Expense, ExpenseBreakDown
 from src.utils.auth_helper import UserID
 
 router = APIRouter()
@@ -53,6 +55,49 @@ def get_group(session: SessionDep, group_id: int, user_id: UserID) -> GroupRespo
     group = session.scalars(stmt).one()
     
     return GroupResponse(id = group.id, name = group.name, description= group.description)
+
+def get_simplified_map(expense_breakdown_list: list[ExpenseBreakDown]):
+    
+    simplified_map = defaultdict(int)
+    for expense_breakdown in expense_breakdown_list:
+        simplified_map[expense_breakdown.payer_id] += expense_breakdown.amount
+        simplified_map[expense_breakdown.receiver_id] -= expense_breakdown.amount
+        
+    return simplified_map
+
+
+@router.get("/{group_id}/expenses/summary")
+def get_group_expense_summary(session: SessionDep, group_id: int, user_id: UserID) -> list[ExpenseSummaryGroupEntry]:
+    
+    stmt = select(Expense).where(Expense.group_id == group_id)
+    
+    expense_breakdown_list = []
+    for expense in session.scalars(stmt):
+        for expense_breakdown in expense.expense_breakdowns:
+            if expense_breakdown.is_settled == False:
+                expense_breakdown_list.append(expense_breakdown)
+                
+    simplified_map = get_simplified_map(expense_breakdown_list)
+    print(simplified_map)
+    transaction_tuples = get_transaction_tuples(simplified_map)
+    
+    expense_summary = []
+    for payer, reciever, amount in transaction_tuples:
+        expense_summary.append(ExpenseSummaryGroupEntry(lender_user_id=payer, borrower_user_id=reciever, amount=amount))
+        
+    return expense_summary
+
+@router.post("/{group_id}/expenses/settle")
+def settleup_group_expense(session: SessionDep, group_id: int, user_id: UserID) -> ResponseMessage:
+    
+    stmt = select(Expense).where(Expense.group_id == group_id)
+    
+    for expense in session.scalars(stmt):
+        for expense_breakdown in expense.expense_breakdowns:
+            expense_breakdown.is_settled = True
+                
+    session.commit()
+    return ResponseMessage(message="Expense Settled up successfully for a group")
 
 
 @router.put("/{group_id}")

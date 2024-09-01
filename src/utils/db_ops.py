@@ -13,7 +13,7 @@ from src.models.schema_models import Base, User, Group
 DATABASE_URL = "postgresql://postgres:mysecretpassword@postgres_db:5432/splitwise_db"
 
 # Create a new SQLAlchemy engine
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, echo=True)
 
 # Test the connection
 no_of_retries = 12

@@ -1,8 +1,10 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import select, or_
 
-from src.models.api_models import ExpenseCreateRequest, ExpenseDetail, EntityCreatedResponse, ResponseMessage
+from src.models.api_models import ExpenseCreateRequest, ExpenseDetail, \
+        EntityCreatedResponse, ResponseMessage, ExpenseResponse, ExpenseBreakDownDetails, \
+        ExpenseSummaryUser, PendingAmount, ExpenseDetailsUser
 from src.models.schema_models import Expense, ExpenseBreakDown, User
 
 from collections import defaultdict
@@ -56,64 +58,99 @@ def create_expense(request: ExpenseCreateRequest, session: SessionDep, user_id: 
     transaction_tuples = get_transaction_tuples(simplified_map)
     expense_breakdowns = [ ExpenseBreakDown(payer_id=payer, receiver_id=reciever, amount=amount)  for payer, reciever, amount in transaction_tuples ]
     
-    expense = Expense(creator_id=user_id, description=request.description, group_id=request.group_id, date=datetime.now(), expense_breakdowns=expense_breakdowns)
+    expense = Expense(creator_id=user_id, 
+                      description=request.description, 
+                      group_id=request.group_id, 
+                      date=datetime.now(), 
+                      total_amount=request.total_amount,
+                      expense_breakdowns=expense_breakdowns)
     session.add(expense)
     session.commit()
     
     return EntityCreatedResponse(id = expense.id)
 
 
+@router.post("/{expense_id}/settle")
+def settleup_expense(session: SessionDep, expense_id: int, user_id: UserID) -> ResponseMessage:
+    
+    stmt = select(Expense).where(Expense.creator_id == user_id).where(Expense.id == expense_id)
+    expense = session.scalars(stmt).one()
+    
+    for expense_breakdown in expense.expense_breakdowns:
+        expense_breakdown.is_settled = True
+    
+    session.commit()
+    return ResponseMessage(message="Expense Settled up successfully")
+
+
 @router.delete("/{expense_id}")
-def delete_group(session: SessionDep, expense_id: int, user_id: UserID) -> ResponseMessage:
+def delete_expense(session: SessionDep, expense_id: int, user_id: UserID) -> ResponseMessage:
     
     stmt = select(Expense).where(Expense.creator_id == user_id).where(Expense.id == expense_id)
     expense = session.scalars(stmt).one()
     session.delete(expense)
     session.commit()
+    
     return ResponseMessage(message="Expense deleted successfully")
-    
 
-# @router.get("/")
-# def get_all_groups(session: SessionDep, user_id: UserID) -> GroupsResponse:
+@router.get("/summary")
+def get_user_expenses_summary(session: SessionDep, user_id: UserID) -> ExpenseSummaryUser:
+    payer_query = select(ExpenseBreakDown) \
+    .where(ExpenseBreakDown.payer_id == user_id) \
+    .where(ExpenseBreakDown.is_settled == False)
     
-#     groups_list = []
-    
-#     stmt = select(Group).where(Group.creator_id == user_id)
-#     for group in session.scalars(stmt):
-#         user_ids = [user.id for user in group.users]
-#         groups_list.append(
-#                             GroupResponse(id=group.id, 
-#                                             name=group.name, 
-#                                             description=group.description, 
-#                                             user_ids=user_ids)
-#                         )
+    summary_map = defaultdict(int)
+    for expense_breakdown in session.scalars(payer_query):
+        summary_map[expense_breakdown.receiver_id] += expense_breakdown.amount
         
-#     return GroupsResponse(data = groups_list, count = len(groups_list))
+    receiver_query = select(ExpenseBreakDown) \
+    .where(ExpenseBreakDown.receiver_id == user_id) \
+    .where(ExpenseBreakDown.is_settled == False)
+    
+    for expense_breakdown in session.scalars(receiver_query):
+        summary_map[expense_breakdown.payer_id] -= expense_breakdown.amount
+        
+    pending_amounts = []
+    for user, pending_amount in summary_map.items():
+        pending_amounts.append(PendingAmount(to_user=user, amount=pending_amount))
+        
+    return ExpenseSummaryUser(from_user=user_id, pending_amounts=pending_amounts)
+
+@router.get("/")
+def get_user_expenses(session: SessionDep, user_id: UserID) -> list[ExpenseDetailsUser]:
+    
+    stmt = select(Expense).join(ExpenseBreakDown, Expense.id == ExpenseBreakDown.expense_id) \
+            .where(or_(ExpenseBreakDown.payer_id == user_id, ExpenseBreakDown.receiver_id == user_id)) \
+            .where(ExpenseBreakDown.is_settled == False)
+    
+    expense_details = []
+    for expense in session.scalars(stmt):
+        for expense_breakdown in expense.expense_breakdowns:
+            user_amount = 0
+            if expense_breakdown.payer_id == user_id:
+                user_amount = expense_breakdown.amount
+            elif expense_breakdown.receiver_id == user_id:
+                user_amount = -1*expense_breakdown.amount
+            
+            if user_amount != 0:
+                expense_details.append(ExpenseDetailsUser(description=expense.description,
+                                                        group_id=expense.group_id,
+                                                        total_amount=expense.total_amount,
+                                                        user_amount=user_amount
+                                                        ))
+            
+    return expense_details
 
 
-# @router.get("/{group_id}")
-# def get_group(session: SessionDep, group_id: int, user_id: UserID) -> GroupResponse:
+@router.get("/{expense_id}")
+def get_expense(session: SessionDep, expense_id: int, user_id: UserID) -> ExpenseResponse:
     
-#     stmt = select(Group).where(Group.creator_id == user_id).where(Group.id == group_id)
-#     group = session.scalars(stmt).one()
+    stmt = select(Expense).where(Expense.creator_id == user_id).where(Expense.id == expense_id)
+    expense = session.scalars(stmt).one()
     
-#     return GroupResponse(id = group.id, name = group.name, description= group.description)
+    expense_details = [ExpenseBreakDownDetails(payer_id=expense_breakdown.payer_id, receiver_id=expense_breakdown.receiver_id, amount=expense_breakdown.amount) 
+        for expense_breakdown in expense.expense_breakdowns]
+    
+    return ExpenseResponse(id = expense.id, group_id=expense.group_id, description= expense.description, expense_details=expense_details)
 
-
-# @router.put("/{group_id}")
-# def edit_group(request: GroupUpdateRequest, session: SessionDep, group_id: int, user_id: UserID):
-
-#     stmt = select(Group).where(Group.creator_id == user_id).where(Group.id == group_id)
-#     group = session.scalars(stmt).one()
-    
-#     user_query = select(User).where(User.id.in_(request.user_ids))
-    
-#     users_list = [user for user in session.scalars(user_query)]
-    
-#     group.description = request.description
-#     group.name = request.name
-#     group.users = users_list
-    
-#     session.commit()
-#     return ResponseMessage(message="Group Updated successfully")
     

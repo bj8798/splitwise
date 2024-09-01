@@ -51,6 +51,10 @@ class ExpenseBreakDown(Base):
     amount: Mapped[int] = mapped_column(Integer)
     is_settled: Mapped[bool] = mapped_column(Boolean, default=False)
     
+    def __repr__(self) -> str:
+        return f"ExpenseBreakDown(id={self.id}, expense_id={self.expense_id}, \
+            payer_id={self.payer_id}, receiver_id={self.receiver_id}, amount={self.amount}, is_settled={self.is_settled})"
+    
 
 class Expense(Base):
     __tablename__ = "expenses"
@@ -60,4 +64,11 @@ class Expense(Base):
     group_id: Mapped[int] = mapped_column(ForeignKey("groups.id"))
     description: Mapped[str] = mapped_column(String(60))
     date: Mapped[datetime] = mapped_column(DateTime)
-    expense_breakdowns: Mapped[List[ExpenseBreakDown]] = relationship()
+    total_amount: Mapped[int] = mapped_column(Integer)
+    expense_breakdowns: Mapped[List[ExpenseBreakDown]] = relationship(cascade='all, delete-orphan')
+    
+    def __repr__(self) -> str:
+        return f"Expense(id={self.id}, creator_id={self.creator_id}, \
+            group_id={self.group_id}, description={self.description}, \
+            date={self.date}, total_amount={self.total_amount}, \
+            )"
