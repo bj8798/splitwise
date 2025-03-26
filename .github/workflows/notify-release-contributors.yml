@@ -1,0 +1,33 @@
+name: Notify Release PR Contributors
+
+on:
+  pull_request:
+    types: [opened, reopened]
+    # branches:
+    #   - master  # or your release branch
+
+jobs:
+  notify:
+    runs-on: [ self-hosted ]
+    steps:
+      - name: Get PR Contributors
+        id: get_contributors
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const { data: commits } = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+            const contributors = new Set();
+            for (const commit of commits) {
+              if (commit.author && commit.author.login) {
+                contributors.add(commit.author.login);
+              }
+            }
+            const contributorList = Array.from(contributors).join(', ');
+            core.info(`Contributors: ${contributorList}`);
+            return contributorList;
+          result-encoding: string
