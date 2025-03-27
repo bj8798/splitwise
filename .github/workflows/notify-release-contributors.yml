@@ -23,8 +23,8 @@ jobs:
             });
             const contributors = new Set();
             for (const commit of commits) {
-              if (commit.author && commit.author.login) {
-                contributors.add(commit.author.login);
+              if (commit.author && commit.author.name) {
+                contributors.add(commit.author.name);
               }
             }
             const contributorList = Array.from(contributors).join(', ');
