@@ -21,13 +21,26 @@ jobs:
               repo: context.repo.repo,
               pull_number: prNumber
             });
-            const contributors = new Set();
+            // Collect unique usernames from the commits
+            const uniqueUsernames = new Set();
             for (const commit of commits) {
-              if (commit.author && commit.author.name) {
-                contributors.add(commit.author.name);
+              if (commit.author && commit.author.login) {
+                uniqueUsernames.add(commit.author.login);
               }
             }
-            const contributorList = Array.from(contributors).join(', ');
+            // Retrieve full names for each unique username
+            const contributorsFullNames = [];
+            for (const username of Array.from(uniqueUsernames)) {
+              try {
+                const { data: userData } = await github.rest.users.getByUsername({ username });
+                // Use the full name if set, otherwise fallback to username
+                contributorsFullNames.push(userData.name ? userData.name : username);
+              } catch (error) {
+                // In case of an error, fallback to the username
+                contributorsFullNames.push(username);
+              }
+            }
+            const contributorList = contributorsFullNames.join(", ");
             core.info(`Contributors: ${contributorList}`);
             return contributorList;
           result-encoding: string
