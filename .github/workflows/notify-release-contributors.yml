@@ -16,31 +16,21 @@ jobs:
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
+            // Get all commits for the pull request
             const { data: commits } = await github.rest.pulls.listCommits({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber
             });
-            // Collect unique usernames from the commits
-            const uniqueUsernames = new Set();
+            // Use a Set to ensure unique email addresses
+            const emails = new Set();
             for (const commit of commits) {
-              if (commit.author && commit.author.login) {
-                uniqueUsernames.add(commit.author.login);
+              // The commit object contains the commit metadata under commit.commit.author.email
+              if (commit.commit && commit.commit.author && commit.commit.author.email) {
+                emails.add(commit.commit.author.email);
               }
             }
-            // Retrieve full names for each unique username
-            const contributorsFullNames = [];
-            for (const username of Array.from(uniqueUsernames)) {
-              try {
-                const { data: userData } = await github.rest.users.getByUsername({ username });
-                // Use the full name if set, otherwise fallback to username
-                contributorsFullNames.push(userData.name ? userData.name : username);
-              } catch (error) {
-                // In case of an error, fallback to the username
-                contributorsFullNames.push(username);
-              }
-            }
-            const contributorList = contributorsFullNames.join(", ");
-            core.info(`Contributors: ${contributorList}`);
-            return contributorList;
+            const emailList = Array.from(emails).join(", ");
+            core.info(`Contributor Emails: ${emailList}`);
+            return emailList;
           result-encoding: string
