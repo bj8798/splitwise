@@ -73,9 +73,6 @@ jobs:
             channel: ${{ secrets.API_V4_CHANNEL_ID }}
             text: ":hourglass_flowing_sand: Hello Contributors, Release PR for the next API release have been cut. Please review your contributions and approve if they look as expected. If changes need to be made, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
 
-        
-
-      # Step 4: Send a Slack notification on PR merged.
       - name: Send Slack Notification on PR Merged
         if: github.event.action == 'closed' && github.event.pull_request.merged == true
         uses: slackapi/slack-github-action@v2.0.0
@@ -85,5 +82,7 @@ jobs:
           payload: |
             channel: ${{ secrets.API_V4_CHANNEL_ID }}
             text: "🚀 Hello Contributors, Release PR for the API release have been merged. Your changes should be now in *Prod*. Please take a look if they look as expected. If something is wrong, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
-
+            
+      - name: Debug Event Data
+        run: echo "${{ toJson(github.event) }}"
 
