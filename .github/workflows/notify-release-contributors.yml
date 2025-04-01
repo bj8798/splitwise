@@ -71,7 +71,7 @@ jobs:
           token: ${{ secrets.SLACK_API_TOKEN }}
           payload: |
             channel: ${{ secrets.API_V4_CHANNEL_ID }}
-            text: "🚀 Hello Contributors, Release PR for the next API release have been cut. Please review your contributions and approve if they look as expected. If changes need to be made, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
+            text: ":hourglass_flowing_sand: Hello Contributors, Release PR for the next API release have been cut. Please review your contributions and approve if they look as expected. If changes need to be made, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
 
         
 
