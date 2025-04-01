@@ -1,4 +1,4 @@
-name: Notify PR Events via Slack
+name: Notify Release PR Events via Slack
 
 on:
   pull_request:
