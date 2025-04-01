@@ -91,6 +91,6 @@ jobs:
           token: ${{ secrets.SLACK_API_TOKEN }}
           payload: |
             channel: ${{ secrets.API_V4_CHANNEL_ID }}
-            text: ":rocket: Hello Contributors, ${{ env.PR_TYPE }} for the API release have been merged. Your changes should be now in *Prod*. Please take a look if they look as expected. If something is wrong, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
+            text: ":rocket: Hello Contributors, ${{ env.PR_TYPE }} for the API release have been merged. Your changes should be now in *Prod*. Please take a look if they are working as expected. If something is wrong, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
             
 
