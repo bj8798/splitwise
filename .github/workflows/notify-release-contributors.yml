@@ -69,9 +69,7 @@ jobs:
         uses: slackapi/slack-github-action@v1.23.0
         with:
           channel: api-v4
-          slack-message: |
-            The release PR has been raised in *${{ github.repository }}*.
-            cc. all contributors: ${{ steps.slack_ids.outputs.result }}
+          slack-message: "The release PR has been raised in *${{ github.repository }}*. \n cc. all contributors: ${{ steps.slack_ids.outputs.result }}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -81,8 +79,6 @@ jobs:
         uses: slackapi/slack-github-action@v1.23.0
         with:
           channel: api-v4
-          slack-message: |
-            The release PR (#${{ github.event.pull_request.number }}) has been merged into master in *${{ github.repository }}*.
-            cc. all contributors: ${{ steps.slack_ids.outputs.result }}
+          slack-message:  "The release PR (#${{ github.event.pull_request.number }}) has been merged into master in *${{ github.repository }}*. cc. all contributors: ${{ steps.slack_ids.outputs.result }}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
