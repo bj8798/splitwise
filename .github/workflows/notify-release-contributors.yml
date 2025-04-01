@@ -7,8 +7,19 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    if: startsWith(github.head_ref, 'release') || startsWith(github.head_ref, 'hotfix')
     steps:
-      # Step 1: Extract unique contributor emails from the PR commits.
+      - name: Determine PR Type
+        id: pr_type
+        run: |
+          if [[ "${{ startsWith(github.head_ref, 'release') }}" == "true" ]]; then
+            echo "PR_TYPE=release PR" >> $GITHUB_ENV
+          elif [[ "${{ startsWith(github.head_ref, 'hotfix') }}" == "true" ]]; then
+            echo "PR_TYPE=hotfix PR" >> $GITHUB_ENV
+          else
+            echo "PR_TYPE=PR" >> $GITHUB_ENV
+          fi
+          
       - name: Get PR Contributor Emails
         id: get_contributors
         if: github.event.action == 'opened' || (github.event.action == 'closed' && github.event.pull_request.merged == true)
@@ -32,7 +43,6 @@ jobs:
             return emailList;
           result-encoding: string
 
-      # Step 2: For each email, look up the Slack user and build Slack mentions.
       - name: Get Slack IDs for Contributor Emails
         id: get_slack_ids
         uses: actions/github-script@v6
@@ -71,7 +81,7 @@ jobs:
           token: ${{ secrets.SLACK_API_TOKEN }}
           payload: |
             channel: ${{ secrets.API_V4_CHANNEL_ID }}
-            text: ":hourglass_flowing_sand: Hello Contributors, Release PR for the next API release have been cut. Please review your contributions and approve if they look as expected. If changes need to be made, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
+            text: ":hourglass_flowing_sand: Hello Contributors, ${{ env.PR_TYPE }} for the next API release have been cut. Please review your contributions and approve if they look as expected. If changes need to be made, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
 
       - name: Send Slack Notification on PR Merged
         if: github.event.action == 'closed' && github.event.pull_request.merged == true
@@ -81,8 +91,6 @@ jobs:
           token: ${{ secrets.SLACK_API_TOKEN }}
           payload: |
             channel: ${{ secrets.API_V4_CHANNEL_ID }}
-            text: "🚀 Hello Contributors, Release PR for the API release have been merged. Your changes should be now in *Prod*. Please take a look if they look as expected. If something is wrong, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
+            text: ":rocket: Hello Contributors, ${{ env.PR_TYPE }} for the API release have been merged. Your changes should be now in *Prod*. Please take a look if they look as expected. If something is wrong, please contact the API team in <#${{ secrets.API_V4_CHANNEL_ID }}|api-v4>.\nPR Link: ${{ github.event.pull_request.html_url }}\ncc: ${{ steps.get_slack_ids.outputs.result }}"
             
-      - name: Debug Event Data
-        run: echo "${{ toJson(github.event) }}"
 
