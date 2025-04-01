@@ -13,9 +13,9 @@ jobs:
         id: pr_type
         run: |
           if [[ "${{ startsWith(github.head_ref, 'release') }}" == "true" ]]; then
-            echo "PR_TYPE=release PR" >> $GITHUB_ENV
+            echo "PR_TYPE=Release PR" >> $GITHUB_ENV
           elif [[ "${{ startsWith(github.head_ref, 'hotfix') }}" == "true" ]]; then
-            echo "PR_TYPE=hotfix PR" >> $GITHUB_ENV
+            echo "PR_TYPE=Hotfix PR" >> $GITHUB_ENV
           else
             echo "PR_TYPE=PR" >> $GITHUB_ENV
           fi
