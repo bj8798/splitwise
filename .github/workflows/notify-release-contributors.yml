@@ -66,21 +66,24 @@ jobs:
       # Step 3: Send a Slack notification on PR opened.
       - name: Send Slack Notification on PR Opened
         if: github.event.action == 'opened'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: 'C08L9CMRDRS'
-          slack-message: "The release PR has been raised in *${{ github.repository }}*. \n cc. all contributors: ${{ steps.slack_ids.outputs.result }}"
+        uses: actions/slack-notify@v2.2.1
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_MESSAGE: "🚀 A new pull request has been opened in *${{ github.repository }}*.\nContributors: ${{ steps.get_slack_ids.outputs.result }}"
+          SLACK_COLOR: "#36a64f"
+          SLACK_FOOTER: ""
+          MSG_MINIMAL: event,actions url,commit
 
       # Step 4: Send a Slack notification on PR merged.
       - name: Send Slack Notification on PR Merged
         if: github.event.action == 'closed' && github.event.pull_request.merged == true
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: 'C08L9CMRDRS'
-          slack-message:  "The release PR (#${{ github.event.pull_request.number }}) has been merged into master in *${{ github.repository }}*. cc. all contributors: ${{ steps.slack_ids.outputs.result }}"
+        uses: actions/slack-notify@v2.2.1
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_MESSAGE: "✅ A pull request has been merged into *${{ github.repository }}*.\nContributors: ${{ steps.get_slack_ids.outputs.result }}"
+          SLACK_COLOR: "#2eb886"
+          SLACK_FOOTER: ""
+          MSG_MINIMAL: event,actions url,commit
+
 
         
