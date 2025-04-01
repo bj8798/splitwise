@@ -66,24 +66,20 @@ jobs:
       # Step 3: Send a Slack notification on PR opened.
       - name: Send Slack Notification on PR Opened
         if: github.event.action == 'opened'
-        uses: actions/slack-notify@v2.2.1
+        uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_MESSAGE: "🚀 A new pull request has been opened in *${{ github.repository }}*.\nContributors: ${{ steps.get_slack_ids.outputs.result }}"
           SLACK_COLOR: "#36a64f"
-          SLACK_FOOTER: ""
-          MSG_MINIMAL: event,actions url,commit
 
       # Step 4: Send a Slack notification on PR merged.
       - name: Send Slack Notification on PR Merged
         if: github.event.action == 'closed' && github.event.pull_request.merged == true
-        uses: actions/slack-notify@v2.2.1
+        uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_MESSAGE: "✅ A pull request has been merged into *${{ github.repository }}*.\nContributors: ${{ steps.get_slack_ids.outputs.result }}"
           SLACK_COLOR: "#2eb886"
-          SLACK_FOOTER: ""
-          MSG_MINIMAL: event,actions url,commit
 
 
         
