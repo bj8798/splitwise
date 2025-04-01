@@ -46,7 +46,7 @@ jobs:
             for (const email of emails) {
               const res = await fetch(`https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(email)}`, {
                 headers: {
-                  "Authorization": `Bearer ${secrets.SLACK_API_TOKEN}`,
+                  "Authorization": `Bearer ${process.env.SLACK_API_TOKEN}`,
                   "Content-Type": "application/x-www-form-urlencoded"
                 }
               });
