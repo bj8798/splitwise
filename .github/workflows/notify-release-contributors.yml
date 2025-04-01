@@ -63,14 +63,14 @@ jobs:
             return slackIdList;
           result-encoding: string
 
-      # Step 3: Send a Slack notification on PR opened.
-      - name: Send Slack Notification on PR Opened
-        if: github.event.action == 'opened'
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_MESSAGE: "🚀 A new pull request has been opened in *${{ github.repository }}*.\nContributors: ${{ steps.get_slack_ids.outputs.result }}"
-          SLACK_COLOR: "#36a64f"
+      # # Step 3: Send a Slack notification on PR opened.
+      # - name: Send Slack Notification on PR Opened
+      #   if: github.event.action == 'opened'
+      #   uses: rtCamp/action-slack-notify@v2
+      #   env:
+      #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #     SLACK_MESSAGE: "🚀 A new pull request has been opened in *${{ github.repository }}*.\nContributors: ${{ steps.get_slack_ids.outputs.result }}"
+      #     SLACK_COLOR: "#36a64f"
 
       # Step 4: Send a Slack notification on PR merged.
       - name: Send Slack Notification on PR Merged
@@ -80,6 +80,16 @@ jobs:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_MESSAGE: "✅ A pull request has been merged into *${{ github.repository }}*.\nContributors: ${{ steps.get_slack_ids.outputs.result }}"
           SLACK_COLOR: "#2eb886"
+
+      - name: Send Slack Notification on PR Opened
+        if: github.event.action == 'opened'
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_API_TOKEN }}
+          payload: |
+            channel: ${{ secrets.API_V4_CHANNEL_ID }}
+            text: "🚀 Hello Contributors, Release PR for the next API releases have been cut. Please review your contributions and approve if they look as expected. If changes need to be made, please contact the API team in <@channel>.\nPR Link: <${{ github.event.pull_request.html_url }} \ncc: ${{ steps.get_slack_ids.outputs.result }}"
 
 
         
