@@ -1,31 +1,28 @@
-name: Notify Release PR Contributors
+name: Notify PR Events via Slack
 
 on:
   pull_request:
-    types: [opened, reopened]
-    # branches:
-    #   - master  # or your release branch
+    types: [opened, closed]
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Get PR Contributors
+      # Step 1: Extract unique contributor emails from the PR commits.
+      - name: Get PR Contributor Emails
         id: get_contributors
+        if: github.event.action == 'opened' || (github.event.action == 'closed' && github.event.pull_request.merged == true)
         uses: actions/github-script@v6
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
-            // Get all commits for the pull request
             const { data: commits } = await github.rest.pulls.listCommits({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber
             });
-            // Use a Set to ensure unique email addresses
             const emails = new Set();
             for (const commit of commits) {
-              // The commit object contains the commit metadata under commit.commit.author.email
               if (commit.commit && commit.commit.author && commit.commit.author.email) {
                 emails.add(commit.commit.author.email);
               }
@@ -34,3 +31,58 @@ jobs:
             core.info(`Contributor Emails: ${emailList}`);
             return emailList;
           result-encoding: string
+
+      # Step 2: For each email, look up the Slack user and build Slack mentions.
+      - name: Get Slack IDs for Contributor Emails
+        id: slack_ids
+        uses: actions/github-script@v6
+        env:
+          SLACK_API_TOKEN: ${{ secrets.SLACK_API_TOKEN }}
+        with:
+          script: |
+            // Split the email string into an array and filter out empties.
+            const emails = "${{ steps.get_contributors.outputs.result }}".split(", ").filter(email => email);
+            const slackIds = [];
+            for (const email of emails) {
+              const res = await fetch(`https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(email)}`, {
+                headers: {
+                  "Authorization": `Bearer ${process.env.SLACK_API_TOKEN}`,
+                  "Content-Type": "application/x-www-form-urlencoded"
+                }
+              });
+              const data = await res.json();
+              if (data.ok && data.user && data.user.id) {
+                slackIds.push(`<@${data.user.id}>`);
+              } else {
+                // Fallback to email if lookup fails.
+                slackIds.push(email);
+              }
+            }
+            const slackIdList = slackIds.join(", ");
+            core.info(`Slack IDs: ${slackIdList}`);
+            return slackIdList;
+          result-encoding: string
+
+      # Step 3: Send a Slack notification on PR opened.
+      - name: Send Slack Notification on PR Opened
+        if: github.event.action == 'opened'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel: api-v4
+          slack-message: |
+            The release PR has been raised in *${{ github.repository }}*.
+            cc. all contributors: ${{ steps.slack_ids.outputs.result }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      # Step 4: Send a Slack notification on PR merged.
+      - name: Send Slack Notification on PR Merged
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel: api-v4
+          slack-message: |
+            The release PR (#${{ github.event.pull_request.number }}) has been merged into master in *${{ github.repository }}*.
+            cc. all contributors: ${{ steps.slack_ids.outputs.result }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
