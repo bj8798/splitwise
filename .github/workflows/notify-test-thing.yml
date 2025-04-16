@@ -38,6 +38,7 @@ jobs:
             // 2) Dedupe by original author (not committer)
             const contributors = new Set();
             for (const c of allCommits) {
+              core.info(`commit info: ${c.commit.message}`);
               // c.commit.author.email is the original author email
               if (c.commit && c.commit.author && c.commit.author.email) {
                 contributors.add(c.commit.author.email);
