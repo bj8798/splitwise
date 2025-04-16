@@ -11,6 +11,7 @@ add_seed_data()
 # some commit 2
 # some commit 3
 # some commit done in feature 1
+# some commit done in feature 2
 
 app = FastAPI()
 app.include_router(app_router)
