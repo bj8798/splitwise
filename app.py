@@ -4,6 +4,8 @@ from pathlib import Path
 from src.api.main import app_router
 from src.utils.db_ops import create_schema, add_seed_data
 
+# some comments
+
 create_schema()
 add_seed_data()
 
