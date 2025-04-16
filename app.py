@@ -8,6 +8,7 @@ create_schema()
 add_seed_data()
 
 # some commit 1
+# some commit 2
 
 app = FastAPI()
 app.include_router(app_router)
