@@ -1,0 +1,50 @@
+name: Notify Release PR Events via Slack
+
+on:
+  pull_request:
+    types: [opened, closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:  
+      - name: Get PR Contributor Emails
+        id: get_contributors
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const base = context.payload.pull_request.base.sha;
+            const head = context.payload.pull_request.head.sha;
+      
+            const perPage = 100;
+            let page = 1;
+            let allCommits = [];
+      
+            // 1) Paginate through the Compare API
+            while (true) {
+              const res = await github.rest.repos.compareCommits({
+                owner, repo, base, head,
+                per_page: perPage,
+                page
+              });
+              const commits = res.data.commits;
+              allCommits.push(...commits);
+              if (commits.length < perPage) break;
+              page++;
+            }
+      
+            // 2) Dedupe by original author (not committer)
+            const contributors = new Set();
+            for (const c of allCommits) {
+              // c.commit.author.email is the original author email
+              if (c.commit && c.commit.author && c.commit.author.email) {
+                contributors.add(c.commit.author.email);
+              }
+            }
+      
+            const list = Array.from(contributors).join(', ');
+            core.info(`Contributors: ${list}`);
+            return list;
+          result-encoding: string
