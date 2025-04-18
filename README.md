@@ -6,12 +6,13 @@ start your application by running:
 * application will be available at http://localhost:8080
 
 #### Note
+Test comment.
 * Docker compose will also run postgres DB on port 5432
 * Application will startup with total 5 inital users and other necessary tables. No need to run any scripts for it.
 * Data is only added in User table, all other tables would be empty.
 
 ### Testing Application
-
+My test comment
 * Please import the postman collection present at `test_resources\Splitwise REST.postman_collection.json`
 * It contains the request for all the endpoints of application, with necessary details.
 
