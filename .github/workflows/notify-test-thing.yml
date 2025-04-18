@@ -38,10 +38,21 @@ jobs:
             
             const emails = new Set();
             for (const commit of allCommits) {
-              if (commit.commit && commit.commit.author && commit.commit.author.email) {
-                emails.add(commit.commit.author.email);
+              // primary author
+              const auth = commit.commit?.author;
+              if (auth?.email) emails.add(auth.email);
+
+              // co‑author trailers in the commit message
+              const lines = commit.commit.message.split('\n');
+              for (const line of lines) {
+                const trailer = line.trim().match(/^Co-authored-by:\s*.+<(.+@.+)>$/i);
+                if (trailer && trailer[1]) {
+                  emails.add(trailer[1]);
+                  core.info(`Adding Co-author Emails: ${trailer[1]}`);
+                }
               }
             }
+            
             const emailList = Array.from(emails).join(", ");
             core.info(`Contributor Emails: ${emailList}`);
             return emailList;
