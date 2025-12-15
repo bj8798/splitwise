@@ -1,0 +1,256 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      release_date:
+        description: 'Release date (mm/dd/yyyy) - leave empty for next Monday'
+        required: false
+        type: string
+      custom_version:
+        description: 'Custom version (optional, overrides version_bump)'
+        required: false
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install gitchangelog pystache
+          
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+      - name: Get current version
+        id: current_version
+        run: |
+          if [ -f "VERSION" ]; then
+            CURRENT_VERSION=$(cat VERSION)
+          else
+            CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "1.0.0")
+          fi
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+          
+      - name: Calculate next version
+        id: next_version
+        run: |
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+          CUSTOM_VERSION="${{ inputs.custom_version }}"
+          
+          if [ -n "$CUSTOM_VERSION" ]; then
+            NEXT_VERSION="$CUSTOM_VERSION"
+          else
+            BUMP_TYPE="${{ inputs.version_bump }}"
+            
+            IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+            MAJOR="${VERSION_PARTS[0]}"
+            MINOR="${VERSION_PARTS[1]}"
+            PATCH="${VERSION_PARTS[2]:-}"
+            
+            case "$BUMP_TYPE" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                if [ -n "$PATCH" ]; then
+                  PATCH=0
+                fi
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                if [ -n "$PATCH" ]; then
+                  PATCH=0
+                fi
+                ;;
+              patch)
+                if [ -z "$PATCH" ]; then
+                  echo "Error: Cannot bump patch version - current version has no patch component"
+                  exit 1
+                fi
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+            
+            if [ -n "$PATCH" ]; then
+              NEXT_VERSION="$MAJOR.$MINOR.$PATCH"
+            else
+              NEXT_VERSION="$MAJOR.$MINOR"
+            fi
+          fi
+          
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version: $NEXT_VERSION"
+          
+      - name: Calculate release date
+        id: release_date
+        run: |
+          RELEASE_DATE="${{ inputs.release_date }}"
+          
+          if [ -z "$RELEASE_DATE" ]; then
+            RELEASE_DATE=$(date -d 'next Monday' '+%m/%d/%Y')
+          fi
+          
+          echo "date=$RELEASE_DATE" >> $GITHUB_OUTPUT
+          echo "Release date: $RELEASE_DATE"
+          
+      - name: Create release branch
+        id: create_branch
+        run: |
+          NEXT_VERSION="${{ steps.next_version.outputs.version }}"
+          BRANCH_NAME="release/$NEXT_VERSION"
+          
+          git checkout -b "$BRANCH_NAME"
+          
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "Created branch: $BRANCH_NAME"
+          
+      - name: Update VERSION file
+        run: |
+          NEXT_VERSION="${{ steps.next_version.outputs.version }}"
+          echo "$NEXT_VERSION" > VERSION
+          git add VERSION
+          echo "Updated VERSION file to $NEXT_VERSION"
+          
+      - name: Generate changelog
+        run: |
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+          NEXT_VERSION="${{ steps.next_version.outputs.version }}"
+          RELEASE_DATE="${{ steps.release_date.outputs.date }}"
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          
+          HEADING="$REPO_NAME $NEXT_VERSION (deploy on or around $RELEASE_DATE)"
+          
+          echo "Generating changelog from v$CURRENT_VERSION to HEAD..."
+          
+          echo -e "$HEADING\n" > "$NEXT_VERSION.tmp-changelog"
+          
+          if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
+            gitchangelog "v$CURRENT_VERSION"..HEAD >> "$NEXT_VERSION.tmp-changelog" 2>/dev/null || echo "No changes found" >> "$NEXT_VERSION.tmp-changelog"
+            NEW_TAG_CHANGELOG=$(gitchangelog "v$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
+          elif git rev-parse "$CURRENT_VERSION" >/dev/null 2>&1; then
+            gitchangelog "$CURRENT_VERSION"..HEAD >> "$NEXT_VERSION.tmp-changelog" 2>/dev/null || echo "No changes found" >> "$NEXT_VERSION.tmp-changelog"
+            NEW_TAG_CHANGELOG=$(gitchangelog "$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
+          else
+            echo "Warning: Could not find tag for version $CURRENT_VERSION, generating from all commits"
+            gitchangelog >> "$NEXT_VERSION.tmp-changelog" 2>/dev/null || echo "No changes found" >> "$NEXT_VERSION.tmp-changelog"
+            NEW_TAG_CHANGELOG=$(gitchangelog 2>/dev/null || echo "No changes found")
+          fi
+          
+          git add "$NEXT_VERSION.tmp-changelog" || true
+          
+          CHANGELOG_ABOUT="# Change Log
+          All notable changes to this project will be documented in this file.
+          The format is based on [Keep a Changelog](http://keepachangelog.com/)
+          and this project adheres to [Semantic Versioning](http://semver.org/)."
+          
+          if [ ! -f CHANGELOG.md ]; then
+            echo "$CHANGELOG_ABOUT" > CHANGELOG.md
+          fi
+          
+          {
+            echo "$CHANGELOG_ABOUT"
+            echo ""
+            echo "## $HEADING"
+            echo ""
+            echo "$NEW_TAG_CHANGELOG"
+            echo ""
+            sed -n '/^## /,$p' CHANGELOG.md 2>/dev/null || echo ""
+          } > CHANGELOG.md.tmp
+          
+          mv CHANGELOG.md.tmp CHANGELOG.md
+          git add CHANGELOG.md
+          
+          echo "Generated changelog for version $NEXT_VERSION"
+          
+      - name: Commit changes
+        run: |
+          NEXT_VERSION="${{ steps.next_version.outputs.version }}"
+          
+          git commit -m "Release $NEXT_VERSION" -m "- Updated VERSION to $NEXT_VERSION" -m "- Generated CHANGELOG.md for $NEXT_VERSION"
+          
+          echo "Committed release changes"
+          
+      - name: Push release branch
+        run: |
+          BRANCH_NAME="${{ steps.create_branch.outputs.branch }}"
+          git push -u origin "$BRANCH_NAME"
+          echo "Pushed branch $BRANCH_NAME"
+          
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NEXT_VERSION="${{ steps.next_version.outputs.version }}"
+          RELEASE_DATE="${{ steps.release_date.outputs.date }}"
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+          
+          PR_BODY="## Release $NEXT_VERSION
+          
+          **Release Date:** $RELEASE_DATE
+          **Version Bump:** ${{ inputs.version_bump }}
+          **Previous Version:** $CURRENT_VERSION
+          
+          ### Changes
+          This PR includes:
+          - Updated VERSION file to $NEXT_VERSION
+          - Generated CHANGELOG.md with changes since $CURRENT_VERSION
+          - Created temporary changelog file: \`$NEXT_VERSION.tmp-changelog\`
+          
+          ### Next Steps
+          1. Review the changelog in this PR
+          2. Merge this PR when ready
+          3. After merging, tag the release:
+             \`\`\`bash
+             git checkout main
+             git pull
+             git tag v$NEXT_VERSION
+             git push origin v$NEXT_VERSION
+             \`\`\`
+          
+          ### Tagging with Changelog (Optional)
+          You can also create the tag with the changelog message:
+          \`\`\`bash
+          git tag v$NEXT_VERSION -F $NEXT_VERSION.tmp-changelog
+          git push origin v$NEXT_VERSION
+          \`\`\`"
+          
+          gh pr create --title "Release $NEXT_VERSION" --body "$PR_BODY" --label "release"
+          
+      - name: Summary
+        run: |
+          echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Current Version:** ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Version:** ${{ steps.next_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release Date:** ${{ steps.release_date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ steps.create_branch.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Pull request created successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review the pull request" >> $GITHUB_STEP_SUMMARY
+          echo "2. Merge when ready" >> $GITHUB_STEP_SUMMARY
+          echo "3. Tag the release: \`git tag v${{ steps.next_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
