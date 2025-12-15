@@ -237,7 +237,7 @@ jobs:
           git push origin v$NEXT_VERSION
           \`\`\`"
           
-          gh pr create --title "Release $NEXT_VERSION" --body "$PR_BODY" --label "release"
+          gh pr create --title "Release $NEXT_VERSION" --body "$PR_BODY"
           
       - name: Summary
         run: |
