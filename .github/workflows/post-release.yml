@@ -65,15 +65,7 @@ jobs:
         run: |
           PR_NUMBER="${{ steps.extract_pr.outputs.pr_number }}"
           
-          PR_DATA=$(gh pr view "$PR_NUMBER" --json number,title,body,headRefName,state,merged)
-          
-          PR_STATE=$(echo "$PR_DATA" | jq -r '.state')
-          PR_MERGED=$(echo "$PR_DATA" | jq -r '.merged')
-          
-          if [ "$PR_STATE" != "MERGED" ] || [ "$PR_MERGED" != "true" ]; then
-            echo "Error: PR #$PR_NUMBER is not merged"
-            exit 1
-          fi
+          PR_DATA=$(gh pr view "$PR_NUMBER" --json number,title,body,headRefName,state)
           
           PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
           BRANCH_NAME=$(echo "$PR_DATA" | jq -r '.headRefName')
@@ -99,15 +91,6 @@ jobs:
           else
             echo "Error: Branch name '$BRANCH_NAME' doesn't match release/* pattern"
             exit 1
-          fi
-          
-          if [ -f "VERSION" ]; then
-            FILE_VERSION=$(cat VERSION)
-            if [ "$FILE_VERSION" != "$VERSION" ]; then
-              echo "Warning: Branch version ($VERSION) doesn't match VERSION file ($FILE_VERSION)"
-              echo "Using VERSION file content: $FILE_VERSION"
-              VERSION="$FILE_VERSION"
-            fi
           fi
           
           echo "version=$VERSION" >> $GITHUB_OUTPUT
