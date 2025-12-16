@@ -28,6 +28,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: development
           fetch-depth: 0
           
       - name: Set up Python
@@ -43,6 +44,34 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+      - name: Determine target branch
+        id: target_branch
+        run: |
+          if git show-ref --verify --quiet refs/remotes/origin/main; then
+            TARGET_BRANCH="main"
+          elif git show-ref --verify --quiet refs/remotes/origin/master; then
+            TARGET_BRANCH="master"
+          else
+            echo "Error: Neither main nor master branch found"
+            exit 1
+          fi
+          echo "branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
+          echo "Target branch: $TARGET_BRANCH"
+          
+      - name: Determine target branch
+        id: target_branch
+        run: |
+          if git show-ref --verify --quiet refs/remotes/origin/main; then
+            TARGET_BRANCH="main"
+          elif git show-ref --verify --quiet refs/remotes/origin/master; then
+            TARGET_BRANCH="master"
+          else
+            echo "Error: Neither main nor master branch found"
+            exit 1
+          fi
+          echo "branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
+          echo "Target branch: $TARGET_BRANCH"
           
       - name: Get current version
         id: current_version
@@ -214,7 +243,9 @@ jobs:
           PR_BODY="## $HEADING
           $NEW_TAG_CHANGELOG"
           
-          gh pr create --title "Release $NEXT_VERSION" --body "$PR_BODY"
+          TARGET_BRANCH="${{ steps.target_branch.outputs.branch }}"
+          
+          gh pr create --title "Release $NEXT_VERSION" --body "$PR_BODY" --base "$TARGET_BRANCH"
           
       - name: Summary
         run: |
