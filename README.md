@@ -30,4 +30,5 @@ start your application by running:
 * At the api side, we will get the input in form of money only.
 * API parameters are not validated as of now. Due to that, in case of invalid access request for resource will result in Internal Server error.
 * Making some changes here to test the changelogs.
+* Changes to see new features are shown or not in commit.
 
