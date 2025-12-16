@@ -145,21 +145,14 @@ jobs:
           
           echo "Generating changelog from v$CURRENT_VERSION to HEAD..."
           
-          echo -e "$HEADING\n" > "$NEXT_VERSION.tmp-changelog"
-          
           if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
-            gitchangelog "v$CURRENT_VERSION"..HEAD >> "$NEXT_VERSION.tmp-changelog" 2>/dev/null || echo "No changes found" >> "$NEXT_VERSION.tmp-changelog"
             NEW_TAG_CHANGELOG=$(gitchangelog "v$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
           elif git rev-parse "$CURRENT_VERSION" >/dev/null 2>&1; then
-            gitchangelog "$CURRENT_VERSION"..HEAD >> "$NEXT_VERSION.tmp-changelog" 2>/dev/null || echo "No changes found" >> "$NEXT_VERSION.tmp-changelog"
             NEW_TAG_CHANGELOG=$(gitchangelog "$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
           else
             echo "Warning: Could not find tag for version $CURRENT_VERSION, generating from all commits"
-            gitchangelog >> "$NEXT_VERSION.tmp-changelog" 2>/dev/null || echo "No changes found" >> "$NEXT_VERSION.tmp-changelog"
             NEW_TAG_CHANGELOG=$(gitchangelog 2>/dev/null || echo "No changes found")
           fi
-          
-          git add "$NEXT_VERSION.tmp-changelog" || true
           
           CHANGELOG_ABOUT="# Change Log
           All notable changes to this project will be documented in this file.
@@ -206,36 +199,20 @@ jobs:
           NEXT_VERSION="${{ steps.next_version.outputs.version }}"
           RELEASE_DATE="${{ steps.release_date.outputs.date }}"
           CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
           
-          PR_BODY="## Release $NEXT_VERSION
+          HEADING="$REPO_NAME $NEXT_VERSION (deploy on or around $RELEASE_DATE)"
           
-          **Release Date:** $RELEASE_DATE
-          **Version Bump:** ${{ inputs.version_bump }}
-          **Previous Version:** $CURRENT_VERSION
+          if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
+            NEW_TAG_CHANGELOG=$(gitchangelog "v$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
+          elif git rev-parse "$CURRENT_VERSION" >/dev/null 2>&1; then
+            NEW_TAG_CHANGELOG=$(gitchangelog "$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
+          else
+            NEW_TAG_CHANGELOG=$(gitchangelog 2>/dev/null || echo "No changes found")
+          fi
           
-          ### Changes
-          This PR includes:
-          - Updated VERSION file to $NEXT_VERSION
-          - Generated CHANGELOG.md with changes since $CURRENT_VERSION
-          - Created temporary changelog file: \`$NEXT_VERSION.tmp-changelog\`
-          
-          ### Next Steps
-          1. Review the changelog in this PR
-          2. Merge this PR when ready
-          3. After merging, tag the release:
-             \`\`\`bash
-             git checkout main
-             git pull
-             git tag v$NEXT_VERSION
-             git push origin v$NEXT_VERSION
-             \`\`\`
-          
-          ### Tagging with Changelog (Optional)
-          You can also create the tag with the changelog message:
-          \`\`\`bash
-          git tag v$NEXT_VERSION -F $NEXT_VERSION.tmp-changelog
-          git push origin v$NEXT_VERSION
-          \`\`\`"
+          PR_BODY="## $HEADING
+          $NEW_TAG_CHANGELOG"
           
           gh pr create --title "Release $NEXT_VERSION" --body "$PR_BODY"
           
