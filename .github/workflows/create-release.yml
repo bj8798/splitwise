@@ -62,7 +62,7 @@ jobs:
       - name: Get current version
         id: current_version
         run: |
-          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+          CURRENT_VERSION=$(git fetch -t origin && git describe --tags --abbrev=0 | sed 's/^v//')
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $CURRENT_VERSION"
           
@@ -147,16 +147,7 @@ jobs:
           
           HEADING="$REPO_NAME $NEXT_VERSION (deploy on or around $RELEASE_DATE)"
           
-          echo "Generating changelog from v$CURRENT_VERSION to HEAD..."
-          
-          if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
-            NEW_TAG_CHANGELOG=$(gitchangelog "v$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
-          elif git rev-parse "$CURRENT_VERSION" >/dev/null 2>&1; then
-            NEW_TAG_CHANGELOG=$(gitchangelog "$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
-          else
-            echo "Warning: Could not find tag for version $CURRENT_VERSION, generating from all commits"
-            NEW_TAG_CHANGELOG=$(gitchangelog 2>/dev/null || echo "No changes found")
-          fi
+          NEW_TAG_CHANGELOG=$(gitchangelog ..."$CURRENT_VERSION")
           
           CHANGELOG_ABOUT="# Change Log
           All notable changes to this project will be documented in this file.
@@ -207,13 +198,7 @@ jobs:
           
           HEADING="$REPO_NAME $NEXT_VERSION (deploy on or around $RELEASE_DATE)"
           
-          if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
-            NEW_TAG_CHANGELOG=$(gitchangelog "v$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
-          elif git rev-parse "$CURRENT_VERSION" >/dev/null 2>&1; then
-            NEW_TAG_CHANGELOG=$(gitchangelog "$CURRENT_VERSION"..HEAD 2>/dev/null || echo "No changes found")
-          else
-            NEW_TAG_CHANGELOG=$(gitchangelog 2>/dev/null || echo "No changes found")
-          fi
+          NEW_TAG_CHANGELOG=$(gitchangelog ..."$CURRENT_VERSION")
           
           PR_BODY="## $HEADING
           $NEW_TAG_CHANGELOG"
