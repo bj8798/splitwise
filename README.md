@@ -29,5 +29,5 @@ start your application by running:
 * In the api for adding the expense, I have assumed that if we want to devide expense based on percentage, than that calculaiton will be done on client side.
 * At the api side, we will get the input in form of money only.
 * API parameters are not validated as of now. Due to that, in case of invalid access request for resource will result in Internal Server error.
-* Some Additional changes for the same.
+* Making some changes here to test the changelogs.
 
