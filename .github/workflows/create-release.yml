@@ -231,7 +231,7 @@ jobs:
           
           TARGET_BRANCH="${{ steps.target_branch.outputs.branch }}"
           
-          gh pr create --title "Release $NEXT_VERSION" --body "$PR_BODY" --base "$TARGET_BRANCH"
+          gh pr create --title "Release/$NEXT_VERSION" --body "$PR_BODY" --base "$TARGET_BRANCH"
           
       - name: Summary
         run: |
