@@ -62,11 +62,7 @@ jobs:
       - name: Get current version
         id: current_version
         run: |
-          if [ -f "VERSION" ]; then
-            CURRENT_VERSION=$(cat VERSION)
-          else
-            CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "1.0.0")
-          fi
+          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $CURRENT_VERSION"
           
@@ -142,13 +138,6 @@ jobs:
           echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
           echo "Created branch: $BRANCH_NAME"
           
-      - name: Update VERSION file
-        run: |
-          NEXT_VERSION="${{ steps.next_version.outputs.version }}"
-          echo "$NEXT_VERSION" > VERSION
-          git add VERSION
-          echo "Updated VERSION file to $NEXT_VERSION"
-          
       - name: Generate changelog
         run: |
           CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
@@ -197,7 +186,7 @@ jobs:
         run: |
           NEXT_VERSION="${{ steps.next_version.outputs.version }}"
           
-          git commit -m "Release $NEXT_VERSION" -m "- Updated VERSION to $NEXT_VERSION" -m "- Generated CHANGELOG.md for $NEXT_VERSION"
+          git commit -m "Release $NEXT_VERSION" -m "- Generated CHANGELOG.md for $NEXT_VERSION"
           
           echo "Committed release changes"
           
