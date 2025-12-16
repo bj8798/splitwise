@@ -101,13 +101,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ steps.validate_version.outputs.version }}"
-          TAG_NAME="v$VERSION"
-          TAG_MESSAGE="${{ steps.get_pr_details.outputs.body }}"
+          TAG_NAME="$VERSION"
+          PR_BODY="${{ steps.get_pr_details.outputs.body }}"
           
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
             echo "Tag $TAG_NAME already exists, skipping tag creation"
           else
-            git tag -a "$TAG_NAME" -m "$TAG_MESSAGE"
+            echo "$PR_BODY" | git tag -a "$TAG_NAME" -F -
             git push origin "$TAG_NAME"
             echo "Created and pushed annotated tag: $TAG_NAME"
           fi
@@ -126,14 +126,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ steps.validate_version.outputs.version }}"
-          TAG_NAME="v$VERSION"
+          TAG_NAME="$VERSION"
           RELEASE_NOTES="${{ steps.get_changelog.outputs.notes }}"
           
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             echo "Release $TAG_NAME already exists, skipping release creation"
           else
             gh release create "$TAG_NAME" \
-              --title "Release $VERSION" \
+              --title "$VERSION" \
               --notes "$RELEASE_NOTES"
             echo "Created GitHub release: $TAG_NAME"
           fi
@@ -166,7 +166,7 @@ jobs:
           echo "## ✅ Post-Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** ${{ steps.validate_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag:** v${{ steps.validate_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** ${{ steps.validate_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Target Branch:** ${{ steps.target_branch.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release PR:** #${{ steps.extract_pr.outputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
