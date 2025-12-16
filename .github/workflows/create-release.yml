@@ -12,7 +12,7 @@ on:
           - minor
           - major
       release_date:
-        description: 'Release date (mm/dd/yyyy) - leave empty for next Monday'
+        description: 'Release date (mm/dd/yyyy) - leave empty for next Tuesday'
         required: false
         type: string
       custom_version:
@@ -110,7 +110,7 @@ jobs:
           RELEASE_DATE="${{ inputs.release_date }}"
           
           if [ -z "$RELEASE_DATE" ]; then
-            RELEASE_DATE=$(date -d 'next Monday' '+%m/%d/%Y')
+            RELEASE_DATE=$(date -d 'next Tuesday' '+%m/%d/%Y')
           fi
           
           echo "date=$RELEASE_DATE" >> $GITHUB_OUTPUT
