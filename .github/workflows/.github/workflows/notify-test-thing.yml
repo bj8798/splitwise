@@ -1,0 +1,59 @@
+name: Notify Release PR Events via Slack
+
+on:
+  pull_request:
+    types: [opened, closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:  
+      - name: Get PR Contributor Emails
+        id: get_contributors
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const perPage = 100;
+            let page = 1;
+            let allCommits = [];
+      
+            while (true) {
+              const { data: commits } = await github.rest.pulls.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                per_page: perPage,
+                page: page,
+              });
+
+              allCommits = allCommits.concat(commits);
+      
+              if (commits.length < perPage) {
+                break;
+              }
+      
+              page += 1;
+            }
+            
+            const emails = new Set();
+            for (const commit of allCommits) {
+              // primary author
+              const auth = commit.commit?.author;
+              if (auth?.email) emails.add(auth.email);
+
+              // co‑author trailers in the commit message
+              const lines = commit.commit.message.split('\n');
+              for (const line of lines) {
+                const trailer = line.trim().match(/^Co-authored-by:\s*.+<(.+@.+)>$/i);
+                if (trailer && trailer[1]) {
+                  emails.add(trailer[1]);
+                  core.info(`Adding Co-author Emails: ${trailer[1]}`);
+                }
+              }
+            }
+            
+            const emailList = Array.from(emails).join(", ");
+            core.info(`Contributor Emails: ${emailList}`);
+            return emailList;
+          result-encoding: string
